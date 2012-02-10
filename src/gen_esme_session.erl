@@ -129,19 +129,19 @@ reply(FsmRef, {SeqNum, Reply}) ->
 
 
 bind_receiver(FsmRef, Params) ->
-    io:format("BIND RECEIVER ~n",[]),
+    lager:debug("BIND RECEIVER ~n",[]),
     Event = {?COMMAND_ID_BIND_RECEIVER, Params},
     gen_fsm:sync_send_all_state_event(FsmRef, Event, ?ASSERT_TIME).
 
 
 bind_transmitter(FsmRef, Params) ->
-    io:format("BIND TRANSMITTER ~n",[]),
+    lager:debug("BIND TRANSMITTER ~n",[]),
     Event = {?COMMAND_ID_BIND_TRANSMITTER, Params},
     gen_fsm:sync_send_all_state_event(FsmRef, Event, ?ASSERT_TIME).
 
 
 bind_transceiver(FsmRef, Params) ->
-    io:format("BIND TRANSCEIVER ~n",[]),
+    lager:debug("BIND TRANSCEIVER ~n",[]),
     Event = {?COMMAND_ID_BIND_TRANSCEIVER, Params},
     gen_fsm:sync_send_all_state_event(FsmRef, Event, ?ASSERT_TIME).
 
@@ -189,7 +189,7 @@ submit_multi(FsmRef, Params) ->
 submit_sm(FsmRef, Params) ->
     Event = {?COMMAND_ID_SUBMIT_SM, Params},
     Ret = gen_fsm:sync_send_all_state_event(FsmRef, Event, ?ASSERT_TIME),
-    io:format("GESMES SSM: ~p ~p ~n", [FsmRef, Ret]),
+    lager:debug("GESMES SSM: ~p ~p ~n", [FsmRef, Ret]),
     Ret.
 
 
@@ -401,12 +401,12 @@ esme_rinvbndsts_resp({CmdId, Pdu}, Sock, Log) ->
 %%%-----------------------------------------------------------------------------
 handle_event({input, CmdId, _Pdu, _Lapse, _Timestamp}, Stn, Std)
   when CmdId == ?COMMAND_ID_ENQUIRE_LINK_RESP ->
-    %io:format("GES HE1 ~p ~p ~p ~n",[CmdId, _Pdu, _Lapse]),
+    %lager:debug("GES HE1 ~p ~p ~p ~n",[CmdId, _Pdu, _Lapse]),
     smpp_session:cancel_timer(Std#st.enquire_link_resp_timer),
     {next_state, Stn, Std};
 handle_event({input, CmdId, Pdu, _Lapse, _Timestamp}, Stn, Std)
   when CmdId == ?COMMAND_ID_GENERIC_NACK ->
-    io:format("GES HE2 ~p ~p ~p ~n",[CmdId, Pdu, _Lapse]),
+    lager:debug("GES HE2 ~p ~p ~p ~n",[CmdId, Pdu, _Lapse]),
     smpp_session:cancel_timer(Std#st.enquire_link_resp_timer),  % In case it was set
     SeqNum = smpp_operation:get_value(sequence_number, Pdu),
     case smpp_req_tab:read(Std#st.req_tab, SeqNum) of
@@ -426,47 +426,47 @@ handle_event({input, CmdId, Pdu, _Lapse, _Timestamp}, Stn, Std)
     {next_state, Stn, Std};
 handle_event({input, CmdId, Pdu, _Lapse, _Timestamp}, Stn, Std)
   when ?IS_RESPONSE(CmdId) ->
-    io:format("GES HE3 ~p ~p ~p ~p ~p ~n",[CmdId, Pdu, _Lapse, Stn, Std]),
+    lager:debug("GES HE3 ~p ~p ~p ~p ~p ~n",[CmdId, Pdu, _Lapse, Stn, Std]),
     smpp_session:cancel_timer(Std#st.enquire_link_resp_timer),  % In case it was set
     SeqNum = smpp_operation:get_value(sequence_number, Pdu),
     ReqId = ?REQUEST(CmdId),
     case smpp_req_tab:read(Std#st.req_tab, SeqNum) of
         {ok, {SeqNum, ReqId, RTimer, Ref}} ->
             smpp_session:cancel_timer(RTimer),
-            io:format("GES HE31 ~p ~n",[Ref]),
+            lager:debug("GES HE31 ~p ~n",[Ref]),
             case smpp_operation:get_value(command_status, Pdu) of
                 ?ESME_ROK when CmdId == ?COMMAND_ID_BIND_RECEIVER_RESP ->
                     smpp_session:cancel_timer(Std#st.session_init_timer),
-                    io:format("GES HE311 ~n",[]),
+                    lager:debug("GES HE311 ~n",[]),
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, bound_rx, Std};
                 ?ESME_ROK when CmdId == ?COMMAND_ID_BIND_TRANSCEIVER_RESP ->
                     smpp_session:cancel_timer(Std#st.session_init_timer),
-                    io:format("GES HE312 ~n",[]),
+                    lager:debug("GES HE312 ~n",[]),
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, bound_trx, Std};
                 ?ESME_ROK when CmdId == ?COMMAND_ID_BIND_TRANSMITTER_RESP ->
                     smpp_session:cancel_timer(Std#st.session_init_timer),
-                    io:format("GES HE313 ~n",[]),
+                    lager:debug("GES HE313 ~n",[]),
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, bound_tx, Std};
                 ?ESME_ROK when CmdId == ?COMMAND_ID_UNBIND_RESP ->
                     smpp_session:cancel_timer(Std#st.inactivity_timer),
-                    io:format("GES HE314 ~n",[]),
+                    lager:debug("GES HE314 ~n",[]),
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, unbound, Std};
                 ?ESME_ROK ->
-                    io:format("GES HE315 ~n",[]),
+                    lager:debug("GES HE315 ~n",[]),
                     case Pdu of
                         {_ID,_,_,[{message_id,MsgID}]} ->
-                            io:format("GES HE3151 ~p ~p ~p ~n", [Ref, MsgID, _ID]),
+                            lager:debug("GES HE3151 ~p ~p ~p ~n", [Ref, MsgID, _ID]),
                             gen_server:cast(msg_bridge, {get_message_id, Ref, MsgID})
                         ;_-> ok
                     end,
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, Stn, Std};
                 Status ->
-                    io:format("GES HE316 ~n",[]),
+                    lager:debug("GES HE316 ~n",[]),
                     Reason = {command_status, Status},
                     handle_peer_resp({error, Reason}, Ref, Std),
                     {next_state, Stn, Std}
@@ -482,7 +482,7 @@ handle_event({input, CmdId, Pdu, _Lapse, _Timestamp}, Stn, Std)
   when CmdId == ?COMMAND_ID_ENQUIRE_LINK ->
     smpp_session:cancel_timer(Std#st.enquire_link_resp_timer),  % In case it was set
     smpp_session:cancel_timer(Std#st.enquire_link_timer),
-    io:format("GES HE4 ~p ~p ~p ~n",[CmdId, Pdu, _Lapse]),
+    lager:debug("GES HE4 ~p ~p ~p ~n",[CmdId, Pdu, _Lapse]),
     ok = (Std#st.mod):handle_enquire_link(Std#st.esme, Pdu),
     SeqNum = smpp_operation:get_value(sequence_number, Pdu),
     RespId = ?COMMAND_ID_ENQUIRE_LINK_RESP,
@@ -493,7 +493,7 @@ handle_event({input, CmdId, Pdu, Lapse, Timestamp}, Stn, Std) ->
     smpp_session:cancel_timer(Std#st.enquire_link_resp_timer),  % In case it was set
     smpp_session:cancel_timer(Std#st.inactivity_timer),
     smpp_session:cancel_timer(Std#st.enquire_link_timer),
-    %io:format("GES HE5 ~p ~p ~p ~n",[CmdId, Pdu, Lapse]),
+    %lager:debug("GES HE5 ~p ~p ~p ~n",[CmdId, Pdu, Lapse]),
     gen_fsm:send_event(self(), {CmdId, Pdu}),
     TE = smpp_session:start_timer(Std#st.timers, enquire_link_timer),
     TI = smpp_session:start_timer(Std#st.timers, inactivity_timer),
@@ -503,10 +503,10 @@ handle_event({input, CmdId, Pdu, Lapse, Timestamp}, Stn, Std) ->
                              inactivity_timer = TI}};
 handle_event({error, CmdId, Status, _SeqNum}, _Stn, Std)
   when ?IS_RESPONSE(CmdId) ->
-    io:format("GES HE6 ~p ~p ~n",[CmdId, Status]),
+    lager:debug("GES HE6 ~p ~p ~n",[CmdId, Status]),
     {stop, {command_status, Status}, Std};
 handle_event({error, CmdId, Status, SeqNum}, Stn, Std) ->
-    io:format("GES HE7 ~p ~p ~n",[CmdId, Status]),
+    lager:debug("GES HE7 ~p ~p ~n",[CmdId, Status]),
     RespId = case ?VALID_COMMAND_ID(CmdId) of
                  true when CmdId /= ?COMMAND_ID_GENERIC_NACK ->
                      ?RESPONSE(CmdId);
@@ -543,9 +543,9 @@ handle_info(_Info, Stn, Std) ->
 handle_sync_event({stop, Reason}, _From, _Stn, Std) ->
     {stop, Reason, ok, Std};
 handle_sync_event({reply, {SeqNum, Reply}}, _From, Stn, Std) ->
-    io:format("GES HSE1 ~p ~p ~n",[SeqNum, Reply]),
+    lager:debug("GES HSE1 ~p ~p ~n",[SeqNum, Reply]),
     {ok, {SeqNum, CmdId}} = smpp_req_tab:read(Std#st.op_tab, SeqNum),
-    io:format("GES HSE11 ~p ~p ~n",[SeqNum, CmdId]),
+    lager:debug("GES HSE11 ~p ~p ~n",[SeqNum, CmdId]),
     RespId = ?RESPONSE(CmdId),
     Sock = Std#st.sock,
     Log = Std#st.log,
@@ -559,7 +559,7 @@ handle_sync_event({reply, {SeqNum, Reply}}, _From, Stn, Std) ->
     end,
     {reply, ok, Stn, Std};
 handle_sync_event({CmdId, Params}, From, Stn, Std) ->
-    io:format("GES HSE2 ~p ~p ~p ~n",[CmdId, Params, From]),
+    lager:debug("GES HSE2 ~p ~p ~p ~n",[CmdId, Params, From]),
     NewStd = send_request(CmdId, Params, From, Std),
     {next_state, Stn, NewStd}.
 
@@ -610,7 +610,7 @@ handle_peer_operation({CmdId, Pdu}, St) ->
     RespId = ?RESPONSE(CmdId),
     Sock = St#st.sock,
     Log = St#st.log,
-    io:format("GES HPO: ~p ~p ~n",[CmdName, RespId]),
+    lager:debug("GES HPO: ~p ~p ~n",[CmdName, RespId]),
     case (St#st.mod):handle_operation(St#st.esme, {CmdName, Pdu}) of
         noreply ->
             ok = smpp_req_tab:write(St#st.op_tab, {SeqNum, CmdId}),
@@ -631,7 +631,7 @@ handle_peer_outbind({?COMMAND_ID_OUTBIND, Pdu}, St) ->
 
 
 handle_peer_resp(Reply, Ref, St) ->
-    io:format("GES HPR: ~p ~p ---- ~p ~p ~n",[St#st.mod, St#st.esme, Reply, Ref]),
+    lager:debug("GES HPR: ~p ~p ---- ~p ~p ~n",[St#st.mod, St#st.esme, Reply, Ref]),
     (St#st.mod):handle_resp(St#st.esme, Reply, Ref).
 
 
@@ -680,9 +680,9 @@ send_enquire_link(St) ->
 
 
 send_request(CmdId, Params, From, St) ->
-    io:format("GESMES SRQ ~p ~p ~n",[CmdId, From]),
+    lager:debug("GESMES SRQ ~p ~p ~n",[CmdId, From]),
     Ref = make_ref(),
-    io:format("GESMES SRQ MAKE REF ~p ~n",[Ref]),
+    lager:debug("GESMES SRQ MAKE REF ~p ~n",[Ref]),
     gen_fsm:reply(From, Ref),
     SeqNum = ?INCR_SEQUENCE_NUMBER(St#st.sequence_number),
     Pdu = smpp_operation:new(CmdId, SeqNum, Params),
@@ -703,6 +703,6 @@ send_request(CmdId, Params, From, St) ->
 
 
 send_response(CmdId, Status, SeqNum, Params, Sock, Log) ->
-    io:format("GESMES SRE ~p ~p ~n",[CmdId, Status]),
+    lager:debug("GESMES SRE ~p ~p ~n",[CmdId, Status]),
     Pdu = smpp_operation:new(CmdId, Status, SeqNum, Params),
     smpp_session:send_pdu(Sock, Pdu, Log).

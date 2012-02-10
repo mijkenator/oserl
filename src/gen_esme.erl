@@ -292,7 +292,7 @@ submit_sm(SrvRef, Params, Args) ->
     submit_sm(SrvRef, Params, Args, ?ASSERT_TIME).
 
 submit_sm(SrvRef, Params, Args, Timeout) ->
-    io:format("GES SUBMIT_SM ~p ~p ~n", [SrvRef, Args]),
+    lager:debug("GES SUBMIT_SM ~p ~p ~n", [SrvRef, Args]),
     gen_server:call(SrvRef, {{submit_sm, Params}, Args}, Timeout).
 
 
@@ -465,10 +465,10 @@ handle_call({start_session, Opts}, _From, St) ->
             {reply, Error, St}
     end;
 handle_call({{CmdName, Params} = Req, Args}, _From, St) ->
-    %io:format("HC1: ~p ~n", [CmdName]),
+    %lager:debug("HC1: ~p ~n", [CmdName]),
     Ref = req_send(St#st.session, CmdName, Params),
-    %io:format("HCREF: ~p ~n", [Ref]),
-    %io:format("HC2: ~p ~p ~n", [St#st.session, St#st.mod]),
+    %lager:debug("HCREF: ~p ~n", [Ref]),
+    %lager:debug("HC2: ~p ~p ~n", [St#st.session, St#st.mod]),
     Ret = case pack((St#st.mod):handle_req(Req, Args, Ref, St#st.mod_st), St) of
         {noreply, NewSt} ->
             {reply, {ok, Ref}, NewSt};
@@ -477,7 +477,7 @@ handle_call({{CmdName, Params} = Req, Args}, _From, St) ->
         {stop, Reason, NewSt} ->
             {stop, ok, Reason, NewSt}
     end,
-    %io:format("HC3: ~p ~n", [Ret]),
+    %lager:debug("HC3: ~p ~n", [Ret]),
     Ret;
 handle_call(pause, _From, St) ->
     try
@@ -501,7 +501,7 @@ handle_call({handle_accept, Addr}, From, St) ->
 handle_call({handle_data_sm, Pdu}, From, St) ->
     pack((St#st.mod):handle_data_sm(Pdu, From, St#st.mod_st), St);
 handle_call({handle_deliver_sm, Pdu}, From, St) ->
-    %io:format("HEHC deliver_sm ~p ~p ~n", [St#st.mod, Pdu]),
+    %lager:debug("HEHC deliver_sm ~p ~p ~n", [St#st.mod, Pdu]),
     pack((St#st.mod):handle_deliver_sm(Pdu, From, St#st.mod_st), St);
 handle_call({handle_unbind, Pdu}, From, St) ->
     pack((St#st.mod):handle_unbind(Pdu, From, St#st.mod_st), St);
@@ -552,9 +552,9 @@ handle_cast({rps_max, Rps}, St) ->
     ok = cl_consumer:rps(St#st.consumer, Rps),
     {noreply, St#st{rps = Rps}};
 handle_cast({handle_resp, Resp, Ref}, St) ->
-    io:format("GENESME HCHR: ~p ~p ~p ~n",[St#st.mod, Resp, Ref]),
+    lager:debug("GENESME HCHR: ~p ~p ~p ~n",[St#st.mod, Resp, Ref]),
     Ret = (St#st.mod):handle_resp(Resp, Ref, St#st.mod_st),
-    io:format("GENESME HCHR Ret: ~p ~n",[Ret]),
+    lager:debug("GENESME HCHR Ret: ~p ~n",[Ret]),
     pack(Ret, St);
     %pack((St#st.mod):handle_resp(Resp, Ref, St#st.mod_st), St);
 handle_cast({handle_alert_notification, Pdu}, St) ->
@@ -589,15 +589,15 @@ handle_closed(SrvRef, Reason) ->
 
 
 handle_enquire_link(SrvRef, Pdu) ->
-    io:format("enquire_link ~p ~n",[Pdu]),
+    lager:debug("enquire_link ~p ~n",[Pdu]),
     gen_server:call(SrvRef, {handle_enquire_link, Pdu}, ?ASSERT_TIME).
 
 
 handle_operation(SrvRef, {data_sm, Pdu}) ->
-    io:format("GEHO data_sm ~p ~n",[{data_sm, Pdu}]),
+    lager:debug("GEHO data_sm ~p ~n",[{data_sm, Pdu}]),
     gen_server:call(SrvRef, {handle_data_sm, Pdu}, ?ASSERT_TIME);
 handle_operation(SrvRef, {deliver_sm, Pdu}) ->
-    %io:format("GEHO deliver_sm ~p ~n",[{deliver_sm, Pdu}]),
+    %lager:debug("GEHO deliver_sm ~p ~n",[{deliver_sm, Pdu}]),
     gen_server:call(SrvRef, {handle_deliver_sm, Pdu}, ?ASSERT_TIME).
 
 handle_outbind(SrvRef, Pdu) ->
@@ -605,7 +605,7 @@ handle_outbind(SrvRef, Pdu) ->
 
 
 handle_resp(SrvRef, Resp, Ref) ->
-    io:format("GENESME HR: ~p ~p ~p ~n", [SrvRef, Resp, Ref]),
+    lager:debug("GENESME HR: ~p ~p ~p ~n", [SrvRef, Resp, Ref]),
     gen_server:cast(SrvRef, {handle_resp, Resp, Ref}).
 
 
@@ -676,9 +676,9 @@ req_send(Pid, CmdName, Params) ->
             CmdName == submit_multi ->
                 gen_esme_session:submit_multi(Pid, Params);
             CmdName == submit_sm ->
-                io:format("GES REQ_SEND ~p ~n",[Pid]),
+                lager:debug("GES REQ_SEND ~p ~n",[Pid]),
                 Ret = gen_esme_session:submit_sm(Pid, Params),
-                io:format("GES REQ_SEND RET ~p ~n",[Ret]),
+                lager:debug("GES REQ_SEND RET ~p ~n",[Ret]),
                 Ret;
             CmdName == unbind ->
                 gen_esme_session:unbind(Pid)
