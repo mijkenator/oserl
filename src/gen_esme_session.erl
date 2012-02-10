@@ -457,12 +457,6 @@ handle_event({input, CmdId, Pdu, _Lapse, _Timestamp}, Stn, Std)
                     {next_state, unbound, Std};
                 ?ESME_ROK ->
                     lager:debug("GES HE315 ~n",[]),
-                    case Pdu of
-                        {_ID,_,_,[{message_id,MsgID}]} ->
-                            lager:debug("GES HE3151 ~p ~p ~p ~n", [Ref, MsgID, _ID]),
-                            gen_server:cast(msg_bridge, {get_message_id, Ref, MsgID})
-                        ;_-> ok
-                    end,
                     handle_peer_resp({ok, Pdu}, Ref, Std),
                     {next_state, Stn, Std};
                 Status ->
